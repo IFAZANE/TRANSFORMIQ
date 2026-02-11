@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+matplotlib.use("Agg")  # Backend non-GUI pour serveur
 import numpy as np
 from sklearn.decomposition import PCA
 import base64
@@ -33,3 +34,4 @@ def generate_transformation_map(X, lic_star, momentum):
     image_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
     return image_base64
+
