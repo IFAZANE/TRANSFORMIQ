@@ -75,28 +75,5 @@ async def analyze(file: UploadFile = File(...)):
         )
     }
 
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
 
-def plot_transformation_map(X, lic_star, momentum):
-
-    pca = PCA(n_components=2)
-    X_2d = pca.fit_transform(X)
-
-    sizes = np.array(momentum) * 500 + 20
-
-    plt.figure(figsize=(10, 7))
-    scatter = plt.scatter(
-        X_2d[:, 0],
-        X_2d[:, 1],
-        s=sizes,
-        c=lic_star
-    )
-
-    plt.colorbar(scatter, label="LIC*")
-    plt.xlabel("Behavioral Dimension 1")
-    plt.ylabel("Behavioral Dimension 2")
-    plt.title("Transformation Tension Map")
-
-    plt.show()
 
