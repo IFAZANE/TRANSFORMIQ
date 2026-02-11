@@ -1,8 +1,6 @@
-matplotlib
 fastapi
 uvicorn
 pandas
-numpy
 scikit-learn
+matplotlib
 python-multipart
-
