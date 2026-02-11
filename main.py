@@ -32,67 +32,47 @@ def health():
 # ANALYZE ENDPOINT
 # ============================================================
 
-@app.post("/analyze")
-async def analyze(file: UploadFile = File(...)):
-    """
-    Analyse un CSV utilisateur et renvoie :
-    - momentum_score
-    - propagation_score
-    - transformation_map_image (PNG base64)
-    """
+from fastapi.responses import StreamingResponse
+import io
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+import numpy as np
 
-    # 1️⃣ Lecture du CSV
+@app.post("/analyze_image")
+async def analyze_image(file: UploadFile = File(...)):
+
     content = await file.read()
     df = pd.read_csv(io.BytesIO(content))
 
-    # Vérification des colonnes obligatoires
-    required_cols = ["user_id", "timestamp", "event_type"]
-    if not all(col in df.columns for col in required_cols):
-        return {"error": f"Le fichier doit contenir les colonnes : {required_cols}"}
-
-    # 2️⃣ Construction des embeddings utilisateurs
     embeddings = build_user_embeddings(df)
-
-    feature_cols = [
-        col for col in embeddings.columns
-        if col not in ["user_id", "time_window"]
-    ]
-
+    feature_cols = [col for col in embeddings.columns if col not in ["user_id", "time_window"]]
     X = embeddings[feature_cols].fillna(0).values
-
-    # 3️⃣ Calcul LIC* pour chaque utilisateur
     embeddings["lic_star"] = compute_lic_star(X)
-
-    # 4️⃣ Calcul du momentum score
     momentum_scores = compute_momentum(embeddings)
 
-    # 5️⃣ Calcul du propagation score
-    propagation_scores = compute_propagation(
-        X,
-        momentum_scores,
-        embeddings["user_id"].values
-    )
+    # Alignement
+    user_ids = embeddings["user_id"].values
+    momentum_array = np.array([momentum_scores[user] for user in user_ids])
+    lic_star_array = embeddings["lic_star"].values
 
-    # 6️⃣ Préparation des résultats
-    result = []
-    for user in embeddings["user_id"].values:
-        result.append({
-            "user_id": int(user),
-            "momentum_score": momentum_scores.get(user, 0),
-            "propagation_score": propagation_scores.get(user, 0)
-        })
+    # PCA 2D
+    pca = PCA(n_components=2)
+    X_2d = pca.fit_transform(X)
 
-    # 7️⃣ Génération du graphique de transformation
-    image_base64 = generate_transformation_map(
-        X,
-        embeddings["lic_star"].values,
-        momentum_scores,
-        embeddings["user_id"].values
-    )
+    # Plot
+    plt.figure(figsize=(8,6))
+    plt.scatter(X_2d[:,0], X_2d[:,1], s=momentum_array*500+20, c=lic_star_array, cmap="viridis", alpha=0.7)
+    plt.colorbar(label="LIC*")
+    plt.title("Transformation Tension Map")
+    plt.xlabel("Dimension 1")
+    plt.ylabel("Dimension 2")
 
-    # 8️⃣ Retour JSON
-    return {
-        "n_users_analyzed": len(result),
-        "results": sorted(result, key=lambda x: x["momentum_score"], reverse=True),
-        "transformation_map_image": image_base64
-    }
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    plt.close()
+    buf.seek(0)
+
+    # Retour en image/png
+    return StreamingResponse(buf, media_type="image/png")
