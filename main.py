@@ -153,6 +153,7 @@ async def analyze_interactive(file: UploadFile = File(...)):
     pca = PCA(n_components=2)
     X_2d = pca.fit_transform(X)
 
+    # DataFrame pour Plotly
     df_plot = pd.DataFrame({
         "x": X_2d[:, 0],
         "y": X_2d[:, 1],
