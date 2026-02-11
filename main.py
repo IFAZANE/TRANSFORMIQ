@@ -8,7 +8,7 @@ from engine import (
     compute_momentum,
     compute_propagation
 )
-from visualization import generate_transformation_map  # <- Import de la fonction de plot
+from visualization import generate_transformation_map
 
 app = FastAPI(
     title="TransformIQ API",
@@ -23,7 +23,7 @@ app = FastAPI(
 @app.get("/")
 def health():
     """
-    Endpoint de vérification que l'API fonctionne
+    Vérifie que l'API fonctionne
     """
     return {"status": "TransformIQ running"}
 
@@ -35,18 +35,17 @@ def health():
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
     """
-    Endpoint principal pour analyser un CSV d'événements utilisateurs
-    Retourne :
-        - momentum_score
-        - propagation_score
-        - transformation_map_image (PNG encodée en base64)
+    Analyse un CSV utilisateur et renvoie :
+    - momentum_score
+    - propagation_score
+    - transformation_map_image (PNG base64)
     """
 
     # 1️⃣ Lecture du CSV
     content = await file.read()
     df = pd.read_csv(io.BytesIO(content))
 
-    # Vérification des colonnes nécessaires
+    # Vérification des colonnes obligatoires
     required_cols = ["user_id", "timestamp", "event_type"]
     if not all(col in df.columns for col in required_cols):
         return {"error": f"Le fichier doit contenir les colonnes : {required_cols}"}
@@ -74,29 +73,26 @@ async def analyze(file: UploadFile = File(...)):
         embeddings["user_id"].values
     )
 
-    # 6️⃣ Préparation des résultats pour retour API
+    # 6️⃣ Préparation des résultats
     result = []
-    for user in momentum_scores:
+    for user in embeddings["user_id"].values:
         result.append({
             "user_id": int(user),
-            "momentum_score": momentum_scores[user],
+            "momentum_score": momentum_scores.get(user, 0),
             "propagation_score": propagation_scores.get(user, 0)
         })
 
-    # 7️⃣ Génération du graphique de transformation (base64 PNG)
+    # 7️⃣ Génération du graphique de transformation
     image_base64 = generate_transformation_map(
         X,
         embeddings["lic_star"].values,
-        list(momentum_scores.values())
+        momentum_scores,
+        embeddings["user_id"].values
     )
 
     # 8️⃣ Retour JSON
     return {
         "n_users_analyzed": len(result),
-        "results": sorted(
-            result,
-            key=lambda x: x["momentum_score"],
-            reverse=True
-        ),
+        "results": sorted(result, key=lambda x: x["momentum_score"], reverse=True),
         "transformation_map_image": image_base64
     }
