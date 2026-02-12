@@ -152,31 +152,32 @@ async def analyze_interactive(file: UploadFile = File(...)):
     # PCA 2D
     pca = PCA(n_components=2)
     # ... après calcul de X_2d PCA 2D
-X_2d = pca.fit_transform(X)
-
-df_plot = pd.DataFrame({
-    "pca_x": X_2d[:, 0],
-    "pca_y": X_2d[:, 1],
-    "user_id": user_ids,
-    "momentum": momentum_array,
-    "propagation": propagation_array,
-    "lic_star": lic_star_array
-})
-
-# Convertir en JSON
-scores = [
-    {
-        "user_id": int(uid),
-        "momentum_score": float(momentum_scores[uid]),
-        "propagation_score": float(propagation_scores[uid]),
-        "lic_star": float(embeddings.loc[embeddings['user_id']==uid, 'lic_star'].values[0]),
-        "pca_x": float(x),
-        "pca_y": float(y)
-    }
-    for uid, x, y in zip(user_ids, X_2d[:,0], X_2d[:,1])
-]
-
-return JSONResponse({
-    "n_users_analyzed": len(user_ids),
-    "scores": scores
-})
+    X_2d = pca.fit_transform(X)
+    
+    df_plot = pd.DataFrame({
+        "pca_x": X_2d[:, 0],
+        "pca_y": X_2d[:, 1],
+        "user_id": user_ids,
+        "momentum": momentum_array,
+        "propagation": propagation_array,
+        "lic_star": lic_star_array
+    })
+    
+    # Convertir en JSON
+    scores = [
+        {
+            "user_id": int(uid),
+            "momentum_score": float(momentum_scores[uid]),
+            "propagation_score": float(propagation_scores[uid]),
+            "lic_star": float(embeddings.loc[embeddings['user_id']==uid, 'lic_star'].values[0]),
+            "pca_x": float(x),
+            "pca_y": float(y)
+        }
+        for uid, x, y in zip(user_ids, X_2d[:,0], X_2d[:,1])
+    ]
+    
+    return JSONResponse({
+        "n_users_analyzed": len(user_ids),
+        "scores": scores
+    })
+    
