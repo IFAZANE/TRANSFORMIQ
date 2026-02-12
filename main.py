@@ -151,33 +151,45 @@ async def analyze_interactive(file: UploadFile = File(...)):
 
     # PCA 2D
     pca = PCA(n_components=2)
-    # ... après calcul de X_2d PCA 2D
     X_2d = pca.fit_transform(X)
-    
+
+    # DataFrame pour Plotly
     df_plot = pd.DataFrame({
-        "pca_x": X_2d[:, 0],
-        "pca_y": X_2d[:, 1],
+        "x": X_2d[:, 0],
+        "y": X_2d[:, 1],
         "user_id": user_ids,
         "momentum": momentum_array,
         "propagation": propagation_array,
         "lic_star": lic_star_array
     })
-    
-    # Convertir en JSON
+
+    fig = px.scatter(
+        df_plot,
+        x="x",
+        y="y",
+        color="lic_star",
+        size="momentum",
+        hover_data=["user_id", "momentum", "propagation", "lic_star"],
+        color_continuous_scale="Viridis",
+        size_max=25,
+        title="Transformation Tension Map (Interactive)"
+    )
+
+    html_bytes = fig.to_html(full_html=False).encode("utf-8")
+    html_base64 = base64.b64encode(html_bytes).decode("utf-8")
+
     scores = [
         {
             "user_id": int(uid),
             "momentum_score": float(momentum_scores[uid]),
             "propagation_score": float(propagation_scores[uid]),
-            "lic_star": float(embeddings.loc[embeddings['user_id']==uid, 'lic_star'].values[0]),
-            "pca_x": float(x),
-            "pca_y": float(y)
+            "lic_star": float(embeddings.loc[embeddings['user_id']==uid, 'lic_star'].values[0])
         }
-        for uid, x, y in zip(user_ids, X_2d[:,0], X_2d[:,1])
+        for uid in user_ids
     ]
-    
+
     return JSONResponse({
         "n_users_analyzed": len(user_ids),
-        "scores": scores
+        "scores": scores,
+        "interactive_map_base64": html_base64
     })
-    
